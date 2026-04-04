@@ -127,7 +127,6 @@ function assertValidDatabaseOptions(options: WebPowerSyncDatabaseOptions): void 
 export class PowerSyncDatabase extends AbstractPowerSyncDatabase {
   static SHARED_MUTEX = new Mutex();
 
-  protected unloadListener?: () => Promise<void>;
   protected resolvedFlags: WebPowerSyncFlags;
 
   constructor(options: WebPowerSyncDatabaseOptionsWithAdapter);
@@ -140,11 +139,6 @@ export class PowerSyncDatabase extends AbstractPowerSyncDatabase {
     assertValidDatabaseOptions(options);
 
     this.resolvedFlags = resolveWebPowerSyncFlags(options.flags);
-
-    if (this.resolvedFlags.enableMultiTabs && !this.resolvedFlags.externallyUnload) {
-      this.unloadListener = () => this.close({ disconnect: false });
-      window.addEventListener('pagehide', this.unloadListener);
-    }
   }
 
   async _initialize(): Promise<void> {
@@ -190,9 +184,6 @@ export class PowerSyncDatabase extends AbstractPowerSyncDatabase {
    * multiple tabs are not enabled.
    */
   close(options?: PowerSyncCloseOptions): Promise<void> {
-    if (this.unloadListener) {
-      window.removeEventListener('pagehide', this.unloadListener);
-    }
     return super.close({
       // Don't disconnect by default if multiple tabs are enabled
       disconnect: options?.disconnect ?? !this.resolvedFlags.enableMultiTabs
